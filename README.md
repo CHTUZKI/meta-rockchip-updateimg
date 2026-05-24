@@ -1,56 +1,58 @@
 # meta-rockchip-updateimg
 
-`meta-rockchip-updateimg` is a reusable Yocto layer for packaging standard Yocto image outputs into Rockchip `update.img` firmware files that can be flashed by RKDevTool or Rockchip `upgrade_tool`.
+**此项目还没有经过任何测试。**
 
-This layer is intended for Rockchip SoCs such as RK3288, RK3399, RK3506, RK3566, RK3568, RK3588 and similar chips. The layer only packages firmware; it does not generate DDR, miniloader, ATF, U-Boot or board-specific boot binaries by itself.
+`meta-rockchip-updateimg` 是一个可复用的 Yocto layer，用于将标准 Yocto 镜像输出打包成 Rockchip `update.img` 固件文件，可通过 RKDevTool 或 Rockchip `upgrade_tool` 进行烧录。
 
-## Scope
+本 layer 适用于 RK3288、RK3399、RK3506、RK3566、RK3568、RK3588 等 Rockchip SoC。该 layer 仅负责固件打包，不自行生成 DDR、miniloader、ATF、U-Boot 或板级启动二进制文件。
 
-This layer provides:
+## 功能范围
 
-- `rk-binary-native`, which installs Rockchip native packaging tools such as `afptool` and `rkImageMaker`.
-- `rockchip-updateimg.bbclass`, which generates:
+本 layer 提供：
+
+- `rk-binary-native`：安装 Rockchip 原生打包工具，如 `afptool` 和 `rkImageMaker`。
+- `rockchip-updateimg.bbclass`：生成以下文件：
   - `parameter`
   - `package-file`
   - `update.raw.img`
   - `<image>.update.img`
-  - `update.img` symlink
+  - `update.img` 符号链接
 
-This layer expects the board or BSP layer to provide Rockchip boot inputs in `${DEPLOY_DIR_IMAGE}` or `${IMGDEPLOYDIR}`.
+本 layer 需要板级或 BSP layer 在 `${DEPLOY_DIR_IMAGE}` 或 `${IMGDEPLOYDIR}` 中提供 Rockchip 启动输入文件。
 
-## Boot media support
+## 启动介质支持
 
-The layer can be used for images intended for eMMC, SD card, SPI NAND, raw NAND or other Rockchip-supported storage media. The actual boot medium is not selected by this layer. It is controlled by the board boot chain, U-Boot configuration, kernel command line, partition layout and Rockchip loader behavior.
+本 layer 可用于面向 eMMC、SD 卡、SPI NAND、raw NAND 或其他 Rockchip 支持的存储介质的镜像。实际启动介质不由本 layer 决定，而是由板级启动链、U-Boot 配置、内核命令行、分区布局和 Rockchip loader 行为共同控制。
 
-This layer focuses on the Rockchip firmware container format:
+本 layer 专注于 Rockchip 固件容器格式：
 
-- eMMC and SD card normally use `RK_UPDATEIMG_PARAMETER_MODE = "gpt"`.
-- NAND and MTD-style layouts normally use `RK_UPDATEIMG_PARAMETER_MODE = "mtd"` or `manual`.
-- Special vendor layouts can use `manual` with a fully custom `RK_UPDATEIMG_PARAMETER_CMDLINE`.
+- eMMC 和 SD 卡通常使用 `RK_UPDATEIMG_PARAMETER_MODE = "gpt"`。
+- NAND 和 MTD 风格的布局通常使用 `RK_UPDATEIMG_PARAMETER_MODE = "mtd"` 或 `manual`。
+- 特殊厂商布局可使用 `manual` 模式并配合完全自定义的 `RK_UPDATEIMG_PARAMETER_CMDLINE`。
 
-## Required inputs
+## 必要输入文件
 
-At minimum, the packaging class requires:
+打包 class 至少需要：
 
-- A Yocto disk image, normally `${IMAGE_LINK_NAME}.wic`
-- `loader.bin` or a compatible loader file
-- A root filesystem image, normally `${IMAGE_LINK_NAME}.ext4`
+- 一个 Yocto 磁盘镜像，通常为 `${IMAGE_LINK_NAME}.wic`
+- `loader.bin` 或兼容的 loader 文件
+- 根文件系统镜像，通常为 `${IMAGE_LINK_NAME}.ext4`
 
-Most complete Rockchip firmware packages also provide:
+完整的 Rockchip 固件包通常还需要：
 
 - `uboot.img`
-- `trust.img` or `trust.bin`
-- `boot.img` if the partition layout contains a `boot` partition
+- `trust.img` 或 `trust.bin`
+- 若分区布局包含 `boot` 分区，则还需要 `boot.img`
 
-## Usage
+## 使用方法
 
-Add the layer:
+添加 layer：
 
 ```bash
 bitbake-layers add-layer /path/to/meta-rockchip-updateimg
 ```
 
-Enable it in an image recipe:
+在镜像 recipe 中启用：
 
 ```bitbake
 inherit rockchip-updateimg
@@ -58,20 +60,20 @@ inherit rockchip-updateimg
 IMAGE_FSTYPES += "wic ext4"
 ```
 
-Then build your image:
+然后构建镜像：
 
 ```bash
 bitbake core-image-minimal
 ```
 
-Expected output:
+预期输出：
 
 ```text
 tmp/deploy/images/<machine>/<image>-<machine>.update.img
 tmp/deploy/images/<machine>/update.img
 ```
 
-## Common configuration
+## 常用配置
 
 ```bitbake
 RK_UPDATEIMG_SOC = "RK3399"
@@ -80,13 +82,13 @@ RK_UPDATEIMG_REQUIRED_IMAGES = "loader.bin rootfs.img"
 RK_UPDATEIMG_EXTRA_DEPENDS = "u-boot-rockchip:do_deploy rk3399-blobs:do_deploy"
 ```
 
-If `RK_UPDATEIMG_SOC` is left as `auto`, the class tries to detect the SoC ID from `loader.bin` and passes it to `rkImageMaker` as `-RKxxxx`.
+若将 `RK_UPDATEIMG_SOC` 保持为 `auto`，class 会尝试从 `loader.bin` 中检测 SoC ID，并以 `-RKxxxx` 的形式传递给 `rkImageMaker`。
 
-## Parameter generation modes
+## parameter 生成模式
 
-### GPT mode
+### GPT 模式
 
-GPT mode is the default and is best suited for eMMC and SD-card style Yocto images.
+GPT 模式为默认模式，最适合 eMMC 和 SD 卡风格的 Yocto 镜像。
 
 ```bitbake
 RK_UPDATEIMG_PARAMETER_MODE = "gpt"
@@ -94,11 +96,11 @@ IMAGE_FSTYPES += "wic ext4"
 RK_UPDATEIMG_ROOTDEV = "PARTLABEL=root"
 ```
 
-The class reads the `.wic` image with `sgdisk`, converts GPT partitions into Rockchip `parameter` entries, and maps partition names to image files.
+class 使用 `sgdisk` 读取 `.wic` 镜像，将 GPT 分区转换为 Rockchip `parameter` 条目，并将分区名映射到镜像文件。
 
-### MTD mode
+### MTD 模式
 
-MTD mode is intended for NAND-style layouts where the Rockchip `parameter` file should describe an `mtdparts` layout directly.
+MTD 模式适用于 NAND 风格的布局，此时 Rockchip `parameter` 文件需直接描述 `mtdparts` 布局。
 
 ```bitbake
 RK_UPDATEIMG_PARAMETER_MODE = "mtd"
@@ -109,9 +111,9 @@ RK_UPDATEIMG_ROOTFS_CANDIDATES = "${IMAGE_LINK_NAME}.ubi rootfs.ubi rootfs.img"
 RK_UPDATEIMG_PARTITION_IMAGE_MAP += "rootfs:rootfs.img"
 ```
 
-### Manual mode
+### 手动模式
 
-Manual mode is intended for vendor-specific or unusual layouts. In this mode, provide the complete Rockchip command line yourself.
+手动模式适用于厂商特定或非常规的布局，需要用户自行提供完整的 Rockchip 命令行。
 
 ```bitbake
 RK_UPDATEIMG_PARAMETER_MODE = "manual"
@@ -119,25 +121,25 @@ RK_UPDATEIMG_PARAMETER_CMDLINE = "mtdparts=rk29xxnand:0x00002000@0x00004000(uboo
 RK_UPDATEIMG_ROOTDEV = "ubi0:rootfs"
 ```
 
-## Fixed partitions
+## 固定分区
 
-Some platforms put firmware partitions outside the GPT layout or need explicit Rockchip parameter entries. Use `RK_UPDATEIMG_FIXED_PARTITIONS` for that.
+某些平台的固件分区位于 GPT 布局之外，或需要显式的 Rockchip parameter 条目，可使用 `RK_UPDATEIMG_FIXED_PARTITIONS`。
 
-Format:
+格式：
 
 ```text
 name:start_sector:size_sectors
 ```
 
-Example:
+示例：
 
 ```bitbake
 RK_UPDATEIMG_FIXED_PARTITIONS = "uboot:0x4000:0x2000 trust:0x6000:0x2000"
 ```
 
-## Partition to image mapping
+## 分区到镜像的映射
 
-The class parses partition names from the generated `parameter` file and maps them to image files. Defaults include:
+class 从生成的 `parameter` 文件中解析分区名，并将其映射到镜像文件。默认映射包括：
 
 ```text
 root -> rootfs.img
@@ -148,15 +150,15 @@ uboot-env -> uboot.env
 backup -> RESERVED
 ```
 
-You can override or extend:
+可以覆盖或扩展映射：
 
 ```bitbake
 RK_UPDATEIMG_PARTITION_IMAGE_MAP += "userdata:userdata.img vendor:vendor.img oem:oem.img"
 ```
 
-## Common SoC examples
+## 常见 SoC 示例
 
-### RK3399 eMMC or SD
+### RK3399 eMMC 或 SD
 
 ```bitbake
 inherit rockchip-updateimg
@@ -169,7 +171,7 @@ RK_UPDATEIMG_FIXED_PARTITIONS = "uboot:0x4000:0x2000 trust:0x6000:0x2000"
 RK_UPDATEIMG_REQUIRED_IMAGES = "loader.bin uboot.img trust.img rootfs.img"
 ```
 
-### RK3588 eMMC or SD
+### RK3588 eMMC 或 SD
 
 ```bitbake
 inherit rockchip-updateimg
@@ -181,7 +183,7 @@ RK_UPDATEIMG_ROOTDEV = "PARTLABEL=root"
 RK_UPDATEIMG_REQUIRED_IMAGES = "loader.bin rootfs.img"
 ```
 
-### NAND / UBI rootfs
+### NAND / UBI 根文件系统
 
 ```bitbake
 inherit rockchip-updateimg
@@ -196,6 +198,6 @@ RK_UPDATEIMG_ROOTFS_CANDIDATES = "${IMAGE_LINK_NAME}.ubi rootfs.ubi rootfs.img"
 RK_UPDATEIMG_PARTITION_IMAGE_MAP += "rootfs:rootfs.img"
 ```
 
-## Important design rule
+## 重要设计原则
 
-Do not make this layer responsible for every SoC's boot chain generation. RK3288, RK3399, RK3506, RK3568 and RK3588 often need different DDR/miniloader/trust generation flows. Keep those in the SoC or board BSP layer, and let this layer only consume the final deploy artifacts.
+不要让本 layer 承担所有 SoC 启动链的生成工作。RK3288、RK3399、RK3506、RK3568 和 RK3588 往往需要不同的 DDR/miniloader/trust 生成流程，应将这些流程保留在 SoC 或板级 BSP layer 中，本 layer 只负责消费最终的 deploy 产物。
