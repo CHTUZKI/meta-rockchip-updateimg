@@ -1,50 +1,54 @@
-SUMMARY = "Rockchip binary firmware packaging tools"
-DESCRIPTION = "Native Rockchip tools used to package firmware images, including afptool and rkImageMaker."
+SUMMARY = "Rockchip firmware packaging tools"
+DESCRIPTION = "Native tools used to build update.img: afptool (built from source) and rkImageMaker (prebuilt)."
 
 LICENSE = "Proprietary"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Proprietary;md5=0557f9d92cf58f2ccdd50f62f8ac0b28"
 
 inherit native
 
-SRC_URI = " \
-    git://github.com/JeffyCN/mirrors.git;protocol=https;nobranch=1;branch=rkbin-2021_10_13;name=rkbin;destsuffix=sources/rkbin \
-    git://github.com/JeffyCN/mirrors.git;protocol=https;branch=tools;name=tools;destsuffix=sources/tools \
-"
-SRCREV_rkbin = "c41b714cacd249e3ef69b2bbe774da5095eefd72"
-SRCREV_tools = "1a32bc776af52494144fcef6641a73850cee628a"
-SRCREV_FORMAT ?= "rkbin_tools"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-S = "${UNPACKDIR}/sources"
+SRC_URI = " \
+    git://github.com/neo-technologies/rockchip-mkbootimg.git;protocol=https;branch=master;name=mkbootimg;destsuffix=sources/mkbootimg \
+    git://github.com/rockchip-linux/rkbin.git;protocol=https;branch=master;name=rkbin;destsuffix=sources/rkbin \
+    file://rkImageMaker \
+"
+
+SRCREV_mkbootimg ?= "${AUTOREV}"
+SRCREV_rkbin ?= "${AUTOREV}"
+SRCREV_FORMAT = "mkbootimg_rkbin"
+
+S = "${WORKDIR}/sources"
+
+DEPENDS += "openssl-native"
 
 INSANE_SKIP:${PN} = "already-stripped"
 STRIP = "echo"
-UNINATIVE_LOADER := ""
 
 do_configure[noexec] = "1"
-do_compile[noexec] = "1"
+
+do_compile() {
+    cd ${WORKDIR}/sources/mkbootimg
+    oe_runmake afptool CC="${CC}" LD="${LD}" CFLAGS="${CFLAGS}" \
+        LDFLAGS="-L${STAGING_LIBDIR_NATIVE} -lcrypto"
+}
 
 do_install() {
     install -d ${D}${bindir}
 
-    sources_dir="${S}"
-    if [ ! -d "${sources_dir}" ]; then
-        sources_dir="${WORKDIR}/sources"
-    fi
-    if [ ! -d "${sources_dir}" ]; then
-        bbfatal "Cannot find Rockchip tools source directory"
-    fi
+    install -m 0755 ${WORKDIR}/sources/mkbootimg/afptool ${D}${bindir}/afptool
+    install -m 0755 ${WORKDIR}/rkImageMaker ${D}${bindir}/rkImageMaker
 
-    find ${sources_dir} -type d -name rk_sign_tool -exec rm -rf {} + 2>/dev/null || true
-
-    for tool in afptool rkImageMaker boot_merger trust_merger firmwareMerger kernelimage loaderimage mkkrnlimg resource_tool upgrade_tool; do
+    # Optional helpers shipped with rkbin; warn only when absent.
+    for tool in boot_merger trust_merger upgrade_tool loaderimage mkkrnlimg; do
         found=""
-        for candidate in $(find ${sources_dir} -type f -name ${tool} 2>/dev/null); do
+        for candidate in $(find ${WORKDIR}/sources/rkbin/tools -maxdepth 1 -type f -name ${tool} 2>/dev/null); do
             install -m 0755 ${candidate} ${D}${bindir}/${tool}
             found="1"
             break
         done
         if [ -z "${found}" ]; then
-            bbwarn "Rockchip tool ${tool} was not found in ${sources_dir}"
+            bbwarn "Rockchip tool ${tool} was not found in rkbin/tools"
         fi
     done
 }
