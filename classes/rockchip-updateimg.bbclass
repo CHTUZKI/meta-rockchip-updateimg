@@ -54,7 +54,7 @@ rockchip_updateimg_find_file() {
                 ;;
         esac
         for path in ${paths}; do
-            if [ -f "${path}" ] || [ -L "${path}" ]; then
+            if [ -e "${path}" ]; then
                 found="${path}"
                 break 2
             fi
@@ -66,10 +66,11 @@ rockchip_updateimg_find_file() {
 rockchip_updateimg_link_file() {
     link_name="$1"
     source_path="$2"
-    if [ -z "${source_path}" ]; then
+    if [ -z "${source_path}" ] || [ ! -e "${source_path}" ]; then
         return 1
     fi
-    rel_path=$(realpath --relative-to="${IMGDEPLOYDIR}" "${source_path}")
+    resolved=$(realpath "${source_path}") || return 1
+    rel_path=$(realpath --relative-to="${IMGDEPLOYDIR}" "${resolved}") || return 1
     ln -sf "${rel_path}" "${IMGDEPLOYDIR}/${link_name}"
 }
 
@@ -194,14 +195,17 @@ rockchip_updateimg_prepare_files() {
     rockchip_updateimg_prepare_misc
 
     rockchip_updateimg_find_file loader_src ${RK_UPDATEIMG_LOADER_CANDIDATES}
-    if [ -z "${loader_src}" ]; then
+    if [ -z "${loader_src}" ] || [ ! -e "${loader_src}" ]; then
         loader_src=$(ls -1 "${DEPLOY_DIR_IMAGE}"/loader.bin-* 2>/dev/null | head -1)
     fi
     rockchip_updateimg_find_file uboot_src ${RK_UPDATEIMG_UBOOT_CANDIDATES}
+    if [ -z "${uboot_src}" ] || [ ! -e "${uboot_src}" ]; then
+        uboot_src=$(ls -1 "${DEPLOY_DIR_IMAGE}"/uboot*.img "${DEPLOY_DIR_IMAGE}"/u-boot*.img 2>/dev/null | head -1)
+    fi
     rockchip_updateimg_find_file boot_src ${RK_UPDATEIMG_BOOT_CANDIDATES}
     rockchip_updateimg_find_file trust_src ${RK_UPDATEIMG_TRUST_CANDIDATES}
     rockchip_updateimg_find_file idblock_src ${RK_UPDATEIMG_IDBLOCK_CANDIDATES}
-    if [ -z "${idblock_src}" ]; then
+    if [ -z "${idblock_src}" ] || [ ! -e "${idblock_src}" ]; then
         idblock_src=$(ls -1 "${DEPLOY_DIR_IMAGE}"/idblock.img-* 2>/dev/null | head -1)
     fi
     rockchip_updateimg_find_file rootfs_src ${RK_UPDATEIMG_ROOTFS_CANDIDATES}
