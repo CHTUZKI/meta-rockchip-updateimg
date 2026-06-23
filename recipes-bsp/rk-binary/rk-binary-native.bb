@@ -14,8 +14,9 @@ SRC_URI = " \
     file://rkImageMaker \
 "
 
-SRCREV_mkbootimg ?= "${AUTOREV}"
-SRCREV_rkbin ?= "${AUTOREV}"
+# Pinned revisions avoid git ls-remote at parse time (WSL/network TLS flakes).
+SRCREV_mkbootimg ?= "2348690523faee6ce3cea9eb9ff47e8b8d5e1df6"
+SRCREV_rkbin ?= "ecb4fcbe954edf38b3ae037d5de6d9f5bccf81f4"
 SRCREV_FORMAT = "mkbootimg_rkbin"
 
 S = "${WORKDIR}/sources"
